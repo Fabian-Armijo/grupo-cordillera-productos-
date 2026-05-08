@@ -1,0 +1,73 @@
+package com.cordillera.productos.service;
+
+import com.cordillera.productos.dto.ProductoRequestDTO;
+import com.cordillera.productos.dto.ProductoResponseDTO;
+import com.cordillera.productos.model.Producto;
+import com.cordillera.productos.repository.ProductoRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+public class ProductoService {
+
+    @Autowired
+    private ProductoRepository productoRepository;
+
+    // Crear un nuevo producto
+    @Transactional
+    public ProductoResponseDTO crearProducto(ProductoRequestDTO request) {
+        Producto producto = new Producto();
+        producto.setSku(request.getSku());
+        producto.setNombre(request.getNombre());
+        producto.setDescripcion(request.getDescripcion());
+        producto.setPrecio(request.getPrecio());
+        producto.setCosto(request.getCosto());
+        producto.setCategoriaId(request.getCategoriaId());
+
+        Producto guardado = productoRepository.save(producto);
+        return mapToResponseDTO(guardado);
+    }
+
+    // Obtener todos los productos
+    @Transactional(readOnly = true)
+    public List<ProductoResponseDTO> obtenerTodos() {
+        List<Producto> productos = productoRepository.findAll();
+        return productos.stream()
+                .map(this::mapToResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    // Obtener por ID
+    @Transactional(readOnly = true)
+    public ProductoResponseDTO obtenerPorId(Long id) {
+        Producto producto = productoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Producto no encontrado con ID: " + id));
+        return mapToResponseDTO(producto);
+    }
+
+    // Eliminar producto
+    @Transactional
+    public void eliminarProducto(Long id) {
+        if (!productoRepository.existsById(id)) {
+            throw new RuntimeException("No se puede eliminar: Producto no encontrado");
+        }
+        productoRepository.deleteById(id);
+    }
+
+    // Método privado para convertir Entidad a DTO (Mapeo)
+    private ProductoResponseDTO mapToResponseDTO(Producto producto) {
+        return ProductoResponseDTO.builder()
+                .id(producto.getId())
+                .sku(producto.getSku())
+                .nombre(producto.getNombre())
+                .descripcion(producto.getDescripcion())
+                .precio(producto.getPrecio())
+                .categoriaId(producto.getCategoriaId())
+                .activo(producto.getActivo())
+                .build();
+    }
+}
