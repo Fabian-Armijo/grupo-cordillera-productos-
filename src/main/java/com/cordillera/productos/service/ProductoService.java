@@ -1,9 +1,13 @@
 package com.cordillera.productos.service;
 
+import com.cordillera.productos.Client.CategoriaClient;
 import com.cordillera.productos.dto.ProductoRequestDTO;
 import com.cordillera.productos.dto.ProductoResponseDTO;
 import com.cordillera.productos.model.Producto;
 import com.cordillera.productos.repository.ProductoRepository;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,12 +18,22 @@ import java.util.stream.Collectors;
 @Service
 public class ProductoService {
 
+    private static final Logger log = LoggerFactory.getLogger(ProductoService.class);
+
     @Autowired
     private ProductoRepository productoRepository;
+
+    @Autowired
+    private CategoriaClient categoriaClient; // Inyección del cliente Feign
 
     // Crear un nuevo producto
     @Transactional
     public ProductoResponseDTO crearProducto(ProductoRequestDTO request) {
+
+        // 1. Validar la categoría usando el Circuit Breaker ANTES de continuar
+        validarCategoria(request.getCategoriaId());
+
+        // 2. Procede a guardar si la validación fue exitosa o si entró al fallback permitido
         Producto producto = new Producto();
         producto.setSku(request.getSku());
         producto.setNombre(request.getNombre());
@@ -57,6 +71,23 @@ public class ProductoService {
         }
         productoRepository.deleteById(id);
     }
+
+    // --- LÓGICA DE RESILIENCIA Y COMUNICACIÓN SÍNCRONA ---
+
+    @CircuitBreaker(name = "categoriaCB", fallbackMethod = "fallbackValidarCategoria")
+    public void validarCategoria(Long categoriaId) {
+        log.info("Llamando al microservicio de Categorías para validar ID: {}", categoriaId);
+        categoriaClient.obtenerCategoriaPorId(categoriaId);
+    }
+
+    // Método de contingencia (Fallback) si el microservicio de Categorías falla o está apagado
+    public void fallbackValidarCategoria(Long categoriaId, Throwable excepcion) {
+        log.warn("ADVERTENCIA: Falló la validación con el microservicio de Categorías. " +
+                        "Razón: {}. Se permitirá guardar el producto asumiendo que el ID {} es válido.",
+                excepcion.getMessage(), categoriaId);
+    }
+
+    // --- MÉTODOS PRIVADOS ---
 
     // Método privado para convertir Entidad a DTO (Mapeo)
     private ProductoResponseDTO mapToResponseDTO(Producto producto) {
