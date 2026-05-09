@@ -76,6 +76,7 @@ Headers: Content-Type: application/json
 Body (raw JSON):
 
 JSON
+```properties
 {
     "sku": "ACC-MOU-01",
     "nombre": "Mouse Inalámbrico",
@@ -85,6 +86,8 @@ JSON
     "categoriaId": 1,
     "activo": true
 }
+```
+
 🛡️ Solución de Problemas Frecuentes
 Error Connection to localhost:5432 refused: El microservicio no puede encontrar PostgreSQL. Asegúrate de que el servicio de base de datos esté encendido y las credenciales en el application.properties sean correctas.
 
