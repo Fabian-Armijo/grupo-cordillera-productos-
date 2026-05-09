@@ -8,10 +8,9 @@ import java.util.Optional;
 @Repository
 public interface ProductoRepository extends JpaRepository<Producto, Long> {
 
-    // Método personalizado para buscar por SKU (ya que es único)
+    //Metodo personalizado para buscar por sku (ya que es único)
     Optional<Producto> findBySku(String sku);
 
-    // Método para buscar productos de una categoría específica
-    // Útil para cuando el microservicio de categorías te pida datos
+    // Metodo para buscar productos de una categoría específica
     java.util.List<Producto> findByCategoriaId(Long categoriaId);
 }

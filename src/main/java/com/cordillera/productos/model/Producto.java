@@ -1,7 +1,6 @@
 package com.cordillera.productos.model;
 
 import jakarta.persistence.*;
-import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -33,5 +32,6 @@ public class Producto {
     @Column(name = "categoria_id", nullable = false)
     private Long categoriaId;
 
+    @Column(nullable = false)
     private Boolean activo = true;
 }

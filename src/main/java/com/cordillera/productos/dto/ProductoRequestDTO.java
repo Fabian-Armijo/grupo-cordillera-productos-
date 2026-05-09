@@ -25,4 +25,6 @@ public class ProductoRequestDTO {
 
     @NotNull(message = "El ID de categoría es obligatorio")
     private Long categoriaId;
+
+    private Boolean activo;
 }

@@ -24,16 +24,18 @@ public class ProductoService {
     private ProductoRepository productoRepository;
 
     @Autowired
-    private CategoriaClient categoriaClient; // Inyección del cliente Feign
+    private CategoriaClient categoriaClient; //Inyección del cliente Feign
 
-    // Crear un nuevo producto
+    @Autowired
+    private CategoriaClientAdapter categoriaAdapter;
+
+    //Crear un nuevo producto
     @Transactional
     public ProductoResponseDTO crearProducto(ProductoRequestDTO request) {
 
-        // 1. Validar la categoría usando el Circuit Breaker ANTES de continuar
-        validarCategoria(request.getCategoriaId());
+        categoriaAdapter.validarCategoria(request.getCategoriaId());
 
-        // 2. Procede a guardar si la validación fue exitosa o si entró al fallback permitido
+        //Procede a guardar si la validación fue exitosa o si entró al fallback permitido
         Producto producto = new Producto();
         producto.setSku(request.getSku());
         producto.setNombre(request.getNombre());
@@ -41,12 +43,17 @@ public class ProductoService {
         producto.setPrecio(request.getPrecio());
         producto.setCosto(request.getCosto());
         producto.setCategoriaId(request.getCategoriaId());
+        if (request.getActivo() != null) {
+            producto.setActivo(request.getActivo());
+        } else {
+            producto.setActivo(true); //Si no lo envían, nace activo por defecto
+        }
 
         Producto guardado = productoRepository.save(producto);
         return mapToResponseDTO(guardado);
     }
 
-    // Obtener todos los productos
+    //Obtener todos los productos
     @Transactional(readOnly = true)
     public List<ProductoResponseDTO> obtenerTodos() {
         List<Producto> productos = productoRepository.findAll();
@@ -55,7 +62,7 @@ public class ProductoService {
                 .collect(Collectors.toList());
     }
 
-    // Obtener por ID
+    //Obtener por ID
     @Transactional(readOnly = true)
     public ProductoResponseDTO obtenerPorId(Long id) {
         Producto producto = productoRepository.findById(id)
@@ -63,7 +70,7 @@ public class ProductoService {
         return mapToResponseDTO(producto);
     }
 
-    // Eliminar producto
+    //Eliminar producto
     @Transactional
     public void eliminarProducto(Long id) {
         if (!productoRepository.existsById(id)) {
@@ -72,24 +79,21 @@ public class ProductoService {
         productoRepository.deleteById(id);
     }
 
-    // --- LÓGICA DE RESILIENCIA Y COMUNICACIÓN SÍNCRONA ---
-
     @CircuitBreaker(name = "categoriaCB", fallbackMethod = "fallbackValidarCategoria")
     public void validarCategoria(Long categoriaId) {
         log.info("Llamando al microservicio de Categorías para validar ID: {}", categoriaId);
         categoriaClient.obtenerCategoriaPorId(categoriaId);
     }
 
-    // Método de contingencia (Fallback) si el microservicio de Categorías falla o está apagado
+    // Metodo de contingencia (Fallback) si el microservicio de Categorías falla o está apagado
     public void fallbackValidarCategoria(Long categoriaId, Throwable excepcion) {
         log.warn("ADVERTENCIA: Falló la validación con el microservicio de Categorías. " +
                         "Razón: {}. Se permitirá guardar el producto asumiendo que el ID {} es válido.",
                 excepcion.getMessage(), categoriaId);
     }
 
-    // --- MÉTODOS PRIVADOS ---
 
-    // Método privado para convertir Entidad a DTO (Mapeo)
+    // Metodo privado para convertir Entidad a DTO (Mapeo)
     private ProductoResponseDTO mapToResponseDTO(Producto producto) {
         return ProductoResponseDTO.builder()
                 .id(producto.getId())

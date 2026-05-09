@@ -37,7 +37,7 @@ public class ProductoController {
         return ResponseEntity.ok(productoService.obtenerPorId(id));
     }
 
-    // Eliminar (Opcional: podrías hacer borrado lógico cambiando el atributo 'activo')
+    // Eliminar
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         productoService.eliminarProducto(id);
