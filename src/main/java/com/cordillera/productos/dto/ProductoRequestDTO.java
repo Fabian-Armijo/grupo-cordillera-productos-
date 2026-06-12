@@ -27,4 +27,5 @@ public class ProductoRequestDTO {
     private Long categoriaId;
 
     private Boolean activo;
+    private Long sucursalId; // Agrega esta línea con sus respectivos getters/setters o @Data de Lombok
 }

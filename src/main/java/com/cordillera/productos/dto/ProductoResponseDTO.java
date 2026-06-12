@@ -17,5 +17,6 @@ public class ProductoResponseDTO {
     private Double precio;
     private Long categoriaId;
     private String nombreCategoria;
+    private Long sucursalId; // Agrega esta línea para que el builder pueda armar la respuesta hacia el Frontend
     private Boolean activo;
 }

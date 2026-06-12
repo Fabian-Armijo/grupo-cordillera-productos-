@@ -34,4 +34,7 @@ public class Producto {
 
     @Column(nullable = false)
     private Boolean activo = true;
+
+    @Column(name = "sucursal_id", nullable = false)
+    private Long sucursalId;
 }

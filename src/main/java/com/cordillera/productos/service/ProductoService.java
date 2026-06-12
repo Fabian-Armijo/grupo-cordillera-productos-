@@ -24,18 +24,17 @@ public class ProductoService {
     private ProductoRepository productoRepository;
 
     @Autowired
-    private CategoriaClient categoriaClient; //Inyección del cliente Feign
+    private CategoriaClient categoriaClient; // Inyección del cliente Feign
 
     @Autowired
     private CategoriaClientAdapter categoriaAdapter;
 
-    //Crear un nuevo producto
+    // 🔒 CREAR PRODUCTO CON HERENCIA AUTOMÁTICA DE SUCURSAL DESDE EL TOKEN
     @Transactional
-    public ProductoResponseDTO crearProducto(ProductoRequestDTO request) {
+    public ProductoResponseDTO crearProducto(ProductoRequestDTO request, String rolDelToken, Long sucursalIdDelToken) {
 
         categoriaAdapter.validarCategoria(request.getCategoriaId());
 
-        //Procede a guardar si la validación fue exitosa o si entró al fallback permitido
         Producto producto = new Producto();
         producto.setSku(request.getSku());
         producto.setNombre(request.getNombre());
@@ -43,17 +42,36 @@ public class ProductoService {
         producto.setPrecio(request.getPrecio());
         producto.setCosto(request.getCosto());
         producto.setCategoriaId(request.getCategoriaId());
+
+        // 🛡️ POLÍTICA DE SEGURIDAD MULTI-SUCURSAL EN MUTACIONES
+        if (rolDelToken != null && "ADMIN".equalsIgnoreCase(rolDelToken.trim())) {
+            // El Administrador Corporativo central SÍ tiene permitido indicar la sucursal manualmente
+            if (request.getSucursalId() == null) {
+                throw new IllegalArgumentException("Un usuario administrador debe especificar explícitamente el ID de la sucursal.");
+            }
+            producto.setSucursalId(request.getSucursalId());
+            log.info("[MS-PRODUCTOS] ADMIN creó producto asignado manualmente a sucursalId: {}", request.getSucursalId());
+        } else {
+            // Si es GERENTE o USUARIO, se ignora por completo el JSON del cliente
+            // y se estampa obligatoriamente la sucursal de su token de sesión.
+            if (sucursalIdDelToken == null) {
+                throw new IllegalArgumentException("Operación Denegada: El token de usuario no cuenta con un identificador de sucursal válido.");
+            }
+            producto.setSucursalId(sucursalIdDelToken);
+            log.info("[MS-PRODUCTOS] Usuario con rol {} creó producto. Sucursal asignada por contexto: {}", rolDelToken, sucursalIdDelToken);
+        }
+
         if (request.getActivo() != null) {
             producto.setActivo(request.getActivo());
         } else {
-            producto.setActivo(true); //Si no lo envían, nace activo por defecto
+            producto.setActivo(true); // Si no lo envían, nace activo por defecto
         }
 
         Producto guardado = productoRepository.save(producto);
         return mapToResponseDTO(guardado);
     }
 
-    //Obtener todos los productos
+    // Obtener todos los productos (Acceso global para ADMIN corporativo)
     @Transactional(readOnly = true)
     public List<ProductoResponseDTO> obtenerTodos() {
         List<Producto> productos = productoRepository.findAll();
@@ -62,7 +80,17 @@ public class ProductoService {
                 .collect(Collectors.toList());
     }
 
-    //Obtener por ID
+    // 🛡️ Listar productos con aislamiento estricto por Sucursal
+    @Transactional(readOnly = true)
+    public List<ProductoResponseDTO> listarPorSucursal(Long sucursalId) {
+        log.info("[MS-PRODUCTOS] Ejecutando query aislada para sucursalId: {}", sucursalId);
+        List<Producto> productos = productoRepository.findBySucursalId(sucursalId);
+        return productos.stream()
+                .map(this::mapToResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    // Obtener por ID
     @Transactional(readOnly = true)
     public ProductoResponseDTO obtenerPorId(Long id) {
         Producto producto = productoRepository.findById(id)
@@ -70,7 +98,7 @@ public class ProductoService {
         return mapToResponseDTO(producto);
     }
 
-    //Eliminar producto
+    // Eliminar producto
     @Transactional
     public void eliminarProducto(Long id) {
         if (!productoRepository.existsById(id)) {
@@ -92,7 +120,6 @@ public class ProductoService {
                 excepcion.getMessage(), categoriaId);
     }
 
-
     // Metodo privado para convertir Entidad a DTO (Mapeo)
     private ProductoResponseDTO mapToResponseDTO(Producto producto) {
         return ProductoResponseDTO.builder()
@@ -102,6 +129,7 @@ public class ProductoService {
                 .descripcion(producto.getDescripcion())
                 .precio(producto.getPrecio())
                 .categoriaId(producto.getCategoriaId())
+                .sucursalId(producto.getSucursalId()) // 🏢 Mapeo seguro de la columna recién creada hacia el DTO
                 .activo(producto.getActivo())
                 .build();
     }
