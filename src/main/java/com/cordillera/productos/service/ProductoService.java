@@ -120,7 +120,7 @@ public class ProductoService {
                 excepcion.getMessage(), categoriaId);
     }
 
-    // Metodo privado para convertir Entidad a DTO (Mapeo)
+    // Metodo privado para convertir Entidad a DTO (Mapeo) asd
     private ProductoResponseDTO mapToResponseDTO(Producto producto) {
         return ProductoResponseDTO.builder()
                 .id(producto.getId())
