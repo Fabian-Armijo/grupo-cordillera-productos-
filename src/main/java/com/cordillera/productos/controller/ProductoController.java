@@ -3,13 +3,10 @@ package com.cordillera.productos.controller;
 import com.cordillera.productos.dto.ProductoRequestDTO;
 import com.cordillera.productos.dto.ProductoResponseDTO;
 import com.cordillera.productos.service.ProductoService;
-
-// Importaciones de Swagger / OpenAPI
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -20,19 +17,17 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/productos")
-@Tag(name = "Catálogo de Productos", description = "Endpoints para la gestión del inventario y catálogo de productos con soporte de aislamiento multi-sucursal")
+@Tag(name = "Productos", description = "Endpoints para la gestión del catálogo de productos")
 public class ProductoController {
 
     @Autowired
     private ProductoService productoService;
 
-    // 🔒 CREAR PRODUCTO BLINDADO MULTI-SUCURSAL (Hereda la sucursal del token por defecto)
-    @Operation(
-            summary = "Crear nuevo producto",
-            description = "Registra un nuevo producto en el catálogo. Si el usuario no es ADMIN, el producto se asocia automáticamente a la sucursal del usuario que realiza la petición."
-    )
-    @ApiResponse(responseCode = "201", description = "Producto creado y guardado exitosamente")
-    @ApiResponse(responseCode = "400", description = "Error de validación en los datos enviados")
+    @Operation(summary = "Crear un nuevo producto", description = "Guarda un producto en la base de datos tras validar su categoría")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Producto creado exitosamente"),
+            @ApiResponse(responseCode = "400", description = "Datos de entrada inválidos")
+    })
     @PostMapping
     public ResponseEntity<ProductoResponseDTO> crear(
             @Parameter(hidden = true) @RequestHeader(value = "X-User-Role", required = false) String rol,
@@ -43,12 +38,7 @@ public class ProductoController {
         return new ResponseEntity<>(nuevoProducto, HttpStatus.CREATED);
     }
 
-    // 🛡️ LISTAR PRODUCTOS CON AISLAMIENTO DE DATOS
-    @Operation(
-            summary = "Listar catálogo de productos",
-            description = "Retorna la lista de productos. Los administradores ven el inventario global, mientras que los gerentes solo ven el catálogo segregado de su propia sucursal."
-    )
-    @ApiResponse(responseCode = "200", description = "Catálogo recuperado con éxito")
+    @Operation(summary = "Listar todos los productos", description = "Retorna una lista completa de todos los productos en el inventario")
     @GetMapping
     public ResponseEntity<List<ProductoResponseDTO>> listarTodos(
             @Parameter(hidden = true) @RequestHeader(value = "X-User-Role", required = false) String rol,
@@ -66,14 +56,11 @@ public class ProductoController {
         return ResponseEntity.ok(productoService.obtenerTodos());
     }
 
-    // 🛡️ OBTENER UN PRODUCTO POR ID CON CANDADO DE SEGURIDAD
-    @Operation(
-            summary = "Obtener producto por ID",
-            description = "Busca el detalle de un producto específico. Protegido contra lecturas cruzadas: un usuario no puede leer productos de una sucursal distinta a la suya."
-    )
-    @ApiResponse(responseCode = "200", description = "Producto encontrado y devuelto")
-    @ApiResponse(responseCode = "403", description = "Acceso denegado (el producto pertenece a otra sucursal)")
-    @ApiResponse(responseCode = "404", description = "El producto no existe")
+    @Operation(summary = "Obtener un producto por su ID", description = "Busca un producto específico utilizando su identificador único")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Producto encontrado"),
+            @ApiResponse(responseCode = "404", description = "Producto no encontrado")
+    })
     @GetMapping("/{id}")
     public ResponseEntity<?> obtenerPorId(
             @Parameter(hidden = true) @RequestHeader(value = "X-User-Role", required = false) String rol,
@@ -93,14 +80,11 @@ public class ProductoController {
         return ResponseEntity.ok(producto);
     }
 
-    // 🛡️ ELIMINAR CON CANDADO DE SEGURIDAD
-    @Operation(
-            summary = "Eliminar producto",
-            description = "Borra un producto del sistema. Verifica estrictamente los permisos antes de ejecutar la eliminación."
-    )
-    @ApiResponse(responseCode = "204", description = "Producto eliminado con éxito (Sin contenido de respuesta)")
-    @ApiResponse(responseCode = "403", description = "Acceso denegado (Intento de eliminación en otra sucursal)")
-    @ApiResponse(responseCode = "404", description = "El producto no existe")
+    @Operation(summary = "Eliminar un producto", description = "Elimina físicamente un producto de la base de datos a partir de su ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Producto eliminado exitosamente"),
+            @ApiResponse(responseCode = "404", description = "Producto no encontrado para eliminar")
+    })
     @DeleteMapping("/{id}")
     public ResponseEntity<?> eliminar(
             @Parameter(hidden = true) @RequestHeader(value = "X-User-Role", required = false) String rol,
@@ -120,12 +104,5 @@ public class ProductoController {
 
         productoService.eliminarProducto(id);
         return ResponseEntity.noContent().build();
-    }
-
-    // 🧼 MANEJADOR DE EXCEPCIONES PARA AGREGAR ROBUSTEZ A LA API
-    @Operation(hidden = true) // Ocultamos el manejador de errores de la interfaz gráfica de Swagger
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<java.util.Map<String, String>> manejarValidaciones(IllegalArgumentException ex) {
-        return ResponseEntity.badRequest().body(java.util.Map.of("message", ex.getMessage()));
     }
 }

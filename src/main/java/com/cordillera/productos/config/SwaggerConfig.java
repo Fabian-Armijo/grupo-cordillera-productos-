@@ -1,9 +1,5 @@
 package com.cordillera.productos.config;
 
-
-
-
-
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Contact;
 import io.swagger.v3.oas.models.info.Info;
@@ -18,10 +14,10 @@ public class SwaggerConfig {
         return new OpenAPI()
                 .info(new Info()
                         .title("API de Productos - Grupo Cordillera")
-                        .version("1.0.0")
-                        .description("Documentación oficial del microservicio encargado de crear y guardar los productos de las diferentes sucursales .")
+                        .version("1.0")
+                        .description("Documentación oficial del Microservicio de Gestión de Productos. Permite administrar el catálogo de productos, precios y su relación con las categorías.")
                         .contact(new Contact()
-                                .name("Equipo de Desarrollo TI")
-                                .email("soporte@cordillera.cl")));
+                                .name("Equipo de Desarrollo")
+                                .email("contacto@grupocordillera.com")));
     }
 }
